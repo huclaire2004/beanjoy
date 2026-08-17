@@ -349,10 +349,13 @@ function render(){
   const todayCount = transactions.filter(t=>t.date===todayStr()).length;
 
   app.innerHTML = `
-    <div class="masthead">
-      <div>
-        <h1>德利廠庫存紀錄系統</h1>
+<div class="masthead"> 
+<div style="display:flex;align-items:center;gap:14px;">
+ <img src="logo3.png" alt="logo" style="height:44px;width:auto;"> 
+<div>
+ <h1>德利廠庫存紀錄系統</h1>
         <div class="sub">品項出入庫即時登打・效期追蹤</div>
+      </div>
       </div>
       <div class="stat-row">
         <div class="stat"><div class="num mono">${items.length}</div><div class="label">品項數</div></div>

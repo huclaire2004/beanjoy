@@ -63,7 +63,7 @@ body{
   padding:12px 16px;border-bottom:1px solid var(--line);
   font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;
   letter-spacing:0.8px;text-transform:uppercase;color:var(--accent);
-  display:flex;justify-content:space-between;align-items:center;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
 }
 .link-btn{
   background:none;border:none;color:var(--accent);cursor:pointer;
@@ -76,6 +76,12 @@ body{
   font-size:13px;font-family:inherit;background:transparent;outline:none;
 }
 .item-list{max-height:600px;overflow-y:auto;}
+.item-list-colhead{
+  display:flex;justify-content:space-between;padding:6px 16px;
+  font-family:'Oswald',sans-serif;font-size:10.5px;letter-spacing:0.5px;
+  text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);
+  background:#F5F3EA;
+}
 .cat-header{
   padding:8px 16px 5px;font-family:'Oswald',sans-serif;font-size:11px;
   letter-spacing:0.6px;text-transform:uppercase;color:var(--ink-soft);
@@ -176,7 +182,7 @@ tr:hover td{background:#FBFAF6;}
 
 .modal-backdrop{
   position:fixed;inset:0;background:rgba(34,37,31,0.45);
-  display:flex;align-items:center;justify-content:center;z-index:50;
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
 }
 .modal{
   background:#fff;border-radius:3px;padding:22px;width:340px;
@@ -197,29 +203,52 @@ tr:hover td{background:#FBFAF6;}
 <div class="toast" id="toast"></div>
 
 <script>
-const TX_KEY = 'inv-transactions';
-const ITEMS_KEY = 'inv-items-master';
+/* ============================================================
+   把下面這個網址換成你自己部署的 Google Apps Script 網頁應用程式網址
+   （部署步驟請看 GoogleAppsScript-Code.gs 檔案最上方的說明）
+   換好之後，不管誰在什麼裝置打開這個網頁，看到的都是同一份
+   Google 試算表資料。
+   ============================================================ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhCUsfdA7BJRzr9lFoOVRFtX6KV3t6wtYi_HVc8u9L1OqnqI6beOI0aO_9By3uk4cU/exec';
+
+async function apiGetAll(){
+  const res = await fetch(`${API_URL}?action=getAll`);
+  if(!res.ok) throw new Error('讀取失敗（HTTP '+res.status+'）');
+  return await res.json();
+}
+async function apiPost(action, payload){
+  const res = await fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify(Object.assign({action}, payload))
+  });
+  if(!res.ok) throw new Error('連線失敗（HTTP '+res.status+'）');
+  return await res.json();
+}
 
 const DEFAULT_CATEGORY_ORDER = ['冷凍庫存','禾豐冷凍存','冷藏庫存'];
 const OUT_CATEGORIES = ['新廠出貨','回本廠','其他'];
 const HANDLERS = ['阿江','佳萱','小芳','宸瑋'];
+const HANDLER_ROLES = {'小芳':'庫存追蹤人員','宸瑋':'庫存追蹤人員'};
+function handlerLabel(h){ return HANDLER_ROLES[h] ? `${h}（${HANDLER_ROLES[h]}）` : h; }
+const UNITS = ['籃','箱','包'];
+
 const DEFAULT_ITEMS = [
-  {name:'凍豆腐(大)', category:'冷凍庫存'},
-  {name:'凍豆腐(小)王品', category:'冷凍庫存'},
-  {name:'大權見凍豆腐 小武', category:'冷凍庫存'},
-  {name:'豆蔬蛋白捲30條包', category:'冷凍庫存'},
-  {name:'豆蔬蛋白捲90條包', category:'冷凍庫存'},
-  {name:'凍豆腐', category:'禾豐冷凍存'},
-  {name:'黃豆干絲', category:'禾豐冷凍存'},
-  {name:'小油丁', category:'禾豐冷凍存'},
-  {name:'百頁切丁', category:'禾豐冷凍存'},
-  {name:'基改豆腐(白色膜)', category:'冷藏庫存'},
-  {name:'非基改老豆腐(透明膜)', category:'冷藏庫存'},
-  {name:'基改豆腐NG(白色膜)', category:'冷藏庫存'},
-  {name:'非基改老豆腐NG(透明膜)', category:'冷藏庫存'},
-  {name:'36入調理豆干', category:'冷藏庫存'},
-  {name:'12入香滷小豆干', category:'冷藏庫存'},
-  {name:'12入調理豆干', category:'冷藏庫存'},
+  {name:'凍豆腐(大)', category:'冷凍庫存', unit:''},
+  {name:'凍豆腐(小)王品', category:'冷凍庫存', unit:''},
+  {name:'大權見凍豆腐 小武', category:'冷凍庫存', unit:''},
+  {name:'豆蔬蛋白捲30條包', category:'冷凍庫存', unit:''},
+  {name:'豆蔬蛋白捲90條包', category:'冷凍庫存', unit:''},
+  {name:'凍豆腐', category:'禾豐冷凍存', unit:''},
+  {name:'黃豆干絲', category:'禾豐冷凍存', unit:''},
+  {name:'小油丁', category:'禾豐冷凍存', unit:''},
+  {name:'百頁切丁', category:'禾豐冷凍存', unit:''},
+  {name:'基改豆腐(白色膜)', category:'冷藏庫存', unit:''},
+  {name:'非基改老豆腐(透明膜)', category:'冷藏庫存', unit:''},
+  {name:'基改豆腐NG(白色膜)', category:'冷藏庫存', unit:''},
+  {name:'非基改老豆腐NG(透明膜)', category:'冷藏庫存', unit:''},
+  {name:'36入調理豆干', category:'冷藏庫存', unit:''},
+  {name:'12入香滷小豆干', category:'冷藏庫存', unit:''},
+  {name:'12入調理豆干', category:'冷藏庫存', unit:''},
 ];
 
 let transactions = [];
@@ -245,40 +274,50 @@ function showToast(msg){
   setTimeout(()=>toastEl.classList.remove('show'), 1800);
 }
 
-async function loadData(){
-  try{
-    const res = await window.storage.get(TX_KEY, false);
-    transactions = res && res.value ? JSON.parse(res.value) : [];
-  }catch(e){ transactions = []; }
+function normalizeTx(t){
+  return {
+    ...t,
+    qty: Number(t.qty)||0,
+    partialQty: (t.partialQty===''||t.partialQty===null||t.partialQty===undefined) ? null : Number(t.partialQty)
+  };
+}
 
+async function loadData(){
+  if(!API_URL || API_URL.indexOf('PASTE_YOUR_')===0){
+    app.innerHTML = `<div style="padding:60px 24px;text-align:center;color:var(--out);max-width:520px;margin:0 auto;">
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;margin-bottom:10px;">尚未設定 Google 試算表連線</div>
+      <div style="font-size:13px;color:var(--ink-soft);">請先部署 GoogleAppsScript-Code.gs 裡的程式碼，並把取得的網址貼到這個 HTML 檔案裡的 API_URL 常數。</div>
+    </div>`;
+    return;
+  }
   try{
-    const res2 = await window.storage.get(ITEMS_KEY, false);
-    itemsMaster = res2 && res2.value ? JSON.parse(res2.value) : [];
+    const data = await apiGetAll();
+    transactions = (data.transactions||[]).map(normalizeTx);
+    itemsMaster = data.items || [];
+
     if(itemsMaster.length===0){
-      itemsMaster = DEFAULT_ITEMS.slice();
-      await saveItems();
+      for(const it of DEFAULT_ITEMS){ await apiPost('addItem', {item: it}); }
+      const data2 = await apiGetAll();
+      transactions = (data2.transactions||[]).map(normalizeTx);
+      itemsMaster = data2.items || [];
     }else{
       const existingNames = new Set(itemsMaster.map(i=>i.name));
       const missing = DEFAULT_ITEMS.filter(i=>!existingNames.has(i.name));
       if(missing.length>0){
-        itemsMaster = itemsMaster.concat(missing);
-        await saveItems();
+        for(const it of missing){ await apiPost('addItem', {item: it}); }
+        const data3 = await apiGetAll();
+        transactions = (data3.transactions||[]).map(normalizeTx);
+        itemsMaster = data3.items || [];
       }
     }
   }catch(e){
-    itemsMaster = DEFAULT_ITEMS.slice();
-    await saveItems();
+    app.innerHTML = `<div style="padding:60px 24px;text-align:center;color:var(--out);max-width:520px;margin:0 auto;">
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;margin-bottom:10px;">連線失敗</div>
+      <div style="font-size:13px;color:var(--ink-soft);">請確認網路連線正常，或 Google Apps Script 是否已正確部署為「所有人」可存取。<br><span class="mono" style="font-size:11px;">${escapeHtml(e.message||'')}</span></div>
+    </div>`;
+    return;
   }
   render();
-}
-
-async function saveData(){
-  try{ await window.storage.set(TX_KEY, JSON.stringify(transactions), false); }
-  catch(e){ showToast('儲存失敗，請重試'); }
-}
-async function saveItems(){
-  try{ await window.storage.set(ITEMS_KEY, JSON.stringify(itemsMaster), false); }
-  catch(e){ showToast('品項儲存失敗，請重試'); }
 }
 
 function categoryOrder(){
@@ -291,15 +330,19 @@ function categoryOrder(){
 function stockOf(name){
   return transactions.filter(t=>t.item===name).reduce((s,t)=>s+(t.type==='in'?t.qty:-t.qty),0);
 }
-
+function unitOfItem(name){
+  const itemTx = transactions.filter(t=>t.item===name && t.unit).slice().sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  return itemTx.length>0 ? itemTx[itemTx.length-1].unit : '';
+}
 function itemsWithStock(){
-  return itemsMaster.map(i=>({...i, stock: stockOf(i.name)}));
+  return itemsMaster.map(i=>({...i, stock: stockOf(i.name), unit: i.unit || unitOfItem(i.name)}));
 }
 
 function fmtQty(n){ return (n>0?'+':'') + n; }
-function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return (s==null?'':String(s)).replace(/"/g,'&quot;'); }
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+/* ================= MAIN RENDER ================= */
 function render(){
   const items = itemsWithStock();
   const totalStock = items.reduce((s,i)=>s+i.stock,0);
@@ -328,6 +371,9 @@ function render(){
           </span>
         </div>
         <input class="item-search" id="itemSearch" placeholder="搜尋品項名稱…" value="${escapeAttr(window.__itemSearchVal||'')}">
+        <div class="item-list-colhead">
+          <span>品項</span><span>結餘數量</span>
+        </div>
         <div class="item-list" id="itemList"></div>
       </div>
 
@@ -348,7 +394,7 @@ function render(){
     renderItemList(items);
   });
   document.getElementById('addItemLink').addEventListener('click', ()=>{
-    showAddItemModal = true; renderModal();
+    showAddItemModal = true; renderAddItemModal();
   });
   document.getElementById('manageItemLink').addEventListener('click', ()=>{
     showManageModal = true; renderManageModal();
@@ -361,7 +407,7 @@ function render(){
   else if(activeTab==='log') renderLogTab();
   else renderBatchTab();
 
-  renderModal();
+  renderAddItemModal();
   renderManageModal();
   renderEditTxModal();
 }
@@ -383,7 +429,7 @@ function renderItemList(items){
     html += group.map(i=>`
       <div class="item-row ${selectedItem===i.name?'active':''}" data-item="${escapeAttr(i.name)}">
         <span class="nm">${escapeHtml(i.name)}</span>
-        <span class="qty mono ${i.stock<0?'neg':''}">${fmtQty(i.stock)}</span>
+        <span class="qty mono ${i.stock<0?'neg':''}">${fmtQty(i.stock)}${i.unit?' '+escapeHtml(i.unit):''}</span>
       </div>
     `).join('');
   });
@@ -397,7 +443,7 @@ function renderItemList(items){
   });
 }
 
-/* ---------------- Entry tab ---------------- */
+/* ================= ENTRY TAB ================= */
 function renderEntryTab(){
   const body = document.getElementById('tabBody');
   const cats = categoryOrder();
@@ -431,9 +477,7 @@ function renderEntryTab(){
         <div style="display:flex;gap:6px;">
           <input type="number" id="f_qty" min="0" step="1" placeholder="0" style="flex:1;">
           <select id="f_unit" style="width:82px;flex-shrink:0;">
-            <option value="籃">籃</option>
-            <option value="箱">箱</option>
-            <option value="包">包</option>
+            ${UNITS.map(u=>`<option value="${u}">${u}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -445,7 +489,7 @@ function renderEntryTab(){
         <label>經手人</label>
         <select id="f_handler_select">
           <option value="">請選擇…</option>
-          ${HANDLERS.map(h=>`<option value="${escapeAttr(h)}" ${handlerChoice===h?'selected':''}>${escapeHtml(h)}</option>`).join('')}
+          ${HANDLERS.map(h=>`<option value="${escapeAttr(h)}" ${handlerChoice===h?'selected':''}>${escapeHtml(handlerLabel(h))}</option>`).join('')}
           <option value="其他" ${handlerChoice==='其他'?'selected':''}>其他</option>
         </select>
         ${handlerChoice==='其他' ? `<input id="f_handler_other" placeholder="請輸入姓名" style="margin-top:6px;">` : ''}
@@ -477,7 +521,7 @@ function renderEntryTab(){
 
   document.getElementById('submitBtn').addEventListener('click', async ()=>{
     const item = document.getElementById('f_item').value;
-    const batch = document.getElementById('f_batch').value.trim();
+    const batch = document.getElementById('f_batch').value;
     const date = document.getElementById('f_date').value;
     const qty = parseInt(document.getElementById('f_qty').value, 10);
     const unit = document.getElementById('f_unit').value;
@@ -486,7 +530,7 @@ function renderEntryTab(){
     const handler = handlerChoice==='其他'
       ? (document.getElementById('f_handler_other')?.value.trim() || '')
       : handlerChoice;
-    const outCategory = entryType==='out' ? document.getElementById('f_outcat').value.trim() : '';
+    const outCategory = entryType==='out' ? (document.getElementById('f_outcat')?.value.trim() || '') : '';
     const note = document.getElementById('f_note').value.trim();
     const msgEl = document.getElementById('formMsg');
 
@@ -501,15 +545,21 @@ function renderEntryTab(){
       item, batch, date, type: entryType, qty, unit, partialQty, handler, outCategory, note,
       createdAt: new Date().toISOString()
     };
-    transactions.push(tx);
-    await saveData();
-    selectedItem = item;
-    showToast((entryType==='in'?'入庫':'出庫')+'登記成功');
-    render();
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    try{
+      await apiPost('addTx', {tx});
+      selectedItem = item;
+      showToast((entryType==='in'?'入庫':'出庫')+'登記成功');
+      await loadData();
+    }catch(e){
+      submitBtn.disabled = false;
+      showToast('儲存失敗，請確認網路連線後再試一次');
+    }
   });
 }
 
-/* ---------------- Log tab ---------------- */
+/* ================= LOG TAB ================= */
 function renderLogTab(){
   const body = document.getElementById('tabBody');
   const cats = categoryOrder();
@@ -545,7 +595,7 @@ function renderLogTab(){
           const cat = (itemsMaster.find(i=>i.name===t.item)||{}).category || '';
           return `
           <tr>
-            <td class="mono">${t.date}</td>
+            <td class="mono">${escapeHtml(t.date)}</td>
             <td>${cat?`<span class="cat-tag">${escapeHtml(cat)}</span>`:'—'}</td>
             <td>${escapeHtml(t.item)}</td>
             <td>${t.batch ? `<span class="batch-tag">${escapeHtml(t.batch)}</span>` : '—'}</td>
@@ -576,9 +626,13 @@ function renderLogTab(){
   body.querySelectorAll('.del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!confirm('確定要刪除這筆異動紀錄嗎？')) return;
-      transactions = transactions.filter(t=>t.id!==btn.dataset.id);
-      await saveData();
-      render();
+      try{
+        await apiPost('deleteTx', {id: btn.dataset.id});
+        showToast('已刪除');
+        await loadData();
+      }catch(e){
+        showToast('刪除失敗，請確認網路連線後再試一次');
+      }
     });
   });
   body.querySelectorAll('.edit-btn').forEach(btn=>{
@@ -591,7 +645,7 @@ function renderLogTab(){
   });
 }
 
-/* ---------------- Batch tab ---------------- */
+/* ================= BATCH / EXPIRY TAB ================= */
 function renderBatchTab(){
   const body = document.getElementById('tabBody');
   const items = itemsWithStock();
@@ -599,10 +653,10 @@ function renderBatchTab(){
 
   if(!selectedItem){
     let html = `<div style="margin-bottom:14px;color:var(--ink-soft);font-size:13px;">請從左側「品項一覽」選擇一個品項，查看各有效日期的庫存明細。</div>`;
-    html += `<div class="table-wrap"><table><thead><tr><th>庫別</th><th>品項</th><th>目前庫存</th></tr></thead><tbody>`;
+    html += `<div class="table-wrap"><table><thead><tr><th>庫別</th><th>品項</th><th>目前庫存</th><th>單位</th></tr></thead><tbody>`;
     cats.forEach(cat=>{
       items.filter(i=>i.category===cat).forEach(i=>{
-        html += `<tr data-item="${escapeAttr(i.name)}" style="cursor:pointer;"><td><span class="cat-tag">${escapeHtml(cat)}</span></td><td>${escapeHtml(i.name)}</td><td class="qty-cell mono">${fmtQty(i.stock)}</td></tr>`;
+        html += `<tr data-item="${escapeAttr(i.name)}" style="cursor:pointer;"><td><span class="cat-tag">${escapeHtml(cat)}</span></td><td>${escapeHtml(i.name)}</td><td class="qty-cell mono">${fmtQty(i.stock)}</td><td class="mono">${escapeHtml(i.unit)||'—'}</td></tr>`;
       });
     });
     html += `</tbody></table></div>`;
@@ -618,27 +672,29 @@ function renderBatchTab(){
   const batchMap = {};
   itemTx.forEach(t=>{
     const key = t.batch || '（未填效期）';
-    if(!batchMap[key]) batchMap[key] = {in:0,out:0,lastDate:'',outCats:{}};
+    if(!batchMap[key]) batchMap[key] = {in:0,out:0,lastDate:'',outCats:{},units:{}};
     if(t.type==='in') batchMap[key].in += t.qty; else batchMap[key].out += t.qty;
     if(t.date > batchMap[key].lastDate) batchMap[key].lastDate = t.date;
     if(t.type==='out' && t.outCategory) batchMap[key].outCats[t.outCategory]=true;
+    if(t.unit) batchMap[key].units[t.unit]=true;
   });
   const batchRows = Object.keys(batchMap).sort((a,b)=>a.localeCompare(b,'zh-Hant'));
   const currentStock = itemTx.reduce((s,t)=>s+(t.type==='in'?t.qty:-t.qty),0);
+  const currentUnit = unitOfItem(selectedItem);
 
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
       <div>
         <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;">${escapeHtml(selectedItem)} ${itemInfo.category?`<span class="cat-tag" style="vertical-align:middle;">${escapeHtml(itemInfo.category)}</span>`:''}</div>
-        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">目前總庫存：<span class="mono" style="font-weight:600;color:${currentStock<0?'var(--out)':'var(--in)'}">${fmtQty(currentStock)}</span></div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">目前總庫存：<span class="mono" style="font-weight:600;color:${currentStock<0?'var(--out)':'var(--in)'}">${fmtQty(currentStock)}${currentUnit?' '+escapeHtml(currentUnit):''}</span></div>
       </div>
       <button class="btn ghost sm" id="clearSelBtn">返回全部品項</button>
     </div>
     <div class="table-wrap">
     <table>
-      <thead><tr><th>有效日期</th><th>累計入庫</th><th>累計出庫</th><th>結存</th><th>最後異動日</th><th>出庫類別</th></tr></thead>
+      <thead><tr><th>有效日期</th><th>累計入庫</th><th>累計出庫</th><th>結存</th><th>單位</th><th>最後異動日</th><th>出庫類別</th></tr></thead>
       <tbody>
-        ${batchRows.length===0 ? `<tr><td colspan="6" style="color:var(--ink-soft);padding:20px 10px;">此品項尚無異動紀錄</td></tr>` :
+        ${batchRows.length===0 ? `<tr><td colspan="7" style="color:var(--ink-soft);padding:20px 10px;">此品項尚無異動紀錄</td></tr>` :
         batchRows.map(b=>{
           const d = batchMap[b];
           const bal = d.in - d.out;
@@ -647,6 +703,7 @@ function renderBatchTab(){
             <td class="qty-cell mono" style="color:var(--in)">+${d.in}</td>
             <td class="qty-cell mono" style="color:var(--out)">-${d.out}</td>
             <td class="qty-cell mono" style="font-weight:700;">${fmtQty(bal)}</td>
+            <td class="mono">${Object.keys(d.units).join('、')||'—'}</td>
             <td class="mono">${d.lastDate}</td>
             <td>${Object.keys(d.outCats).join('、')||'—'}</td>
           </tr>`;
@@ -660,17 +717,17 @@ function renderBatchTab(){
   });
 }
 
-/* ---------------- Add item modal ---------------- */
-function renderModal(){
-  let existing = document.getElementById('modalRoot');
+/* ================= ADD ITEM MODAL ================= */
+function renderAddItemModal(){
+  let existing = document.getElementById('addItemModalRoot');
   if(existing) existing.remove();
   if(!showAddItemModal) return;
 
   const cats = categoryOrder();
   const root = document.createElement('div');
-  root.id = 'modalRoot';
+  root.id = 'addItemModalRoot';
   root.innerHTML = `
-    <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal-backdrop" id="addItemBackdrop">
       <div class="modal">
         <h3>新增品項</h3>
         <div class="field">
@@ -679,8 +736,15 @@ function renderModal(){
         </div>
         <div class="field">
           <label>所屬庫別</label>
-          <input id="m_cat" list="catList" placeholder="例如 冷凍庫存" value="${escapeAttr(cats[0]||'')}">
-          <datalist id="catList">${cats.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+          <input id="m_cat" list="addItemCatList" placeholder="例如 冷凍庫存" value="${escapeAttr(cats[0]||'')}">
+          <datalist id="addItemCatList">${cats.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+        </div>
+        <div class="field">
+          <label>單位</label>
+          <select id="m_unit">
+            <option value="">未設定</option>
+            ${UNITS.map(u=>`<option value="${u}">${u}</option>`).join('')}
+          </select>
         </div>
         <div class="modal-actions">
           <button class="btn ghost sm" id="m_cancel">取消</button>
@@ -691,28 +755,36 @@ function renderModal(){
   `;
   document.body.appendChild(root);
 
-  document.getElementById('modalBackdrop').addEventListener('click', e=>{
-    if(e.target.id==='modalBackdrop'){ showAddItemModal=false; renderModal(); }
+  document.getElementById('addItemBackdrop').addEventListener('click', e=>{
+    if(e.target.id==='addItemBackdrop'){ showAddItemModal=false; renderAddItemModal(); }
   });
-  document.getElementById('m_cancel').addEventListener('click', ()=>{ showAddItemModal=false; renderModal(); });
+  document.getElementById('m_cancel').addEventListener('click', ()=>{ showAddItemModal=false; renderAddItemModal(); });
   document.getElementById('m_save').addEventListener('click', async ()=>{
     const name = document.getElementById('m_name').value.trim();
     const cat = document.getElementById('m_cat').value.trim() || '未分類';
+    const unit = document.getElementById('m_unit').value;
     if(!name){ return; }
     if(itemsMaster.some(i=>i.name===name)){
       showToast('這個品項已經存在');
       return;
     }
-    itemsMaster.push({name, category:cat});
-    await saveItems();
-    showAddItemModal = false;
-    selectedItem = name;
-    showToast('已新增品項');
-    render();
+    try{
+      const res = await apiPost('addItem', {item:{name, category:cat, unit}});
+      if(res && res.success===false){
+        showToast(res.error==='exists' ? '這個品項已經存在' : '新增失敗');
+        return;
+      }
+      showAddItemModal = false;
+      selectedItem = name;
+      showToast('已新增品項');
+      await loadData();
+    }catch(e){
+      showToast('新增失敗，請確認網路連線後再試一次');
+    }
   });
 }
 
-/* ---------------- Manage (edit/delete) items modal ---------------- */
+/* ================= MANAGE (EDIT/DELETE) ITEMS MODAL ================= */
 function renderManageModal(){
   let existing = document.getElementById('manageModalRoot');
   if(existing) existing.remove();
@@ -728,12 +800,18 @@ function renderManageModal(){
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">改完名稱或庫別後按「儲存」；已存在的異動紀錄品項名稱也會一併更新。</div>
         <div class="table-wrap">
         <table>
-          <thead><tr><th>品項名稱</th><th>庫別</th><th></th></tr></thead>
+          <thead><tr><th>品項名稱</th><th>庫別</th><th>單位</th><th></th></tr></thead>
           <tbody>
             ${itemsMaster.map((it,idx)=>`
               <tr>
                 <td><input class="mgr-name" data-idx="${idx}" value="${escapeAttr(it.name)}" style="width:100%;padding:6px 7px;border:1px solid var(--line-strong);border-radius:2px;font-size:12.5px;font-family:inherit;"></td>
                 <td><input class="mgr-cat" data-idx="${idx}" value="${escapeAttr(it.category)}" list="mgrCatList" style="width:100%;padding:6px 7px;border:1px solid var(--line-strong);border-radius:2px;font-size:12.5px;font-family:inherit;"></td>
+                <td>
+                  <select class="mgr-unit" data-idx="${idx}" style="width:100%;padding:6px 7px;border:1px solid var(--line-strong);border-radius:2px;font-size:12.5px;font-family:inherit;">
+                    <option value="" ${!it.unit?'selected':''}>未設定</option>
+                    ${UNITS.map(u=>`<option value="${u}" ${it.unit===u?'selected':''}>${u}</option>`).join('')}
+                  </select>
+                </td>
                 <td style="white-space:nowrap;">
                   <button class="link-btn mgr-save" data-idx="${idx}">儲存</button>
                   <button class="link-btn mgr-del" data-idx="${idx}" style="color:var(--out);margin-left:8px;">刪除</button>
@@ -764,8 +842,10 @@ function renderManageModal(){
       const idx = parseInt(btn.dataset.idx, 10);
       const nameInput = root.querySelector(`.mgr-name[data-idx="${idx}"]`);
       const catInput = root.querySelector(`.mgr-cat[data-idx="${idx}"]`);
+      const unitInput = root.querySelector(`.mgr-unit[data-idx="${idx}"]`);
       const newName = nameInput.value.trim();
       const newCat = catInput.value.trim() || '未分類';
+      const newUnit = unitInput.value;
       if(!newName){ showToast('品項名稱不能空白'); return; }
       const oldItem = itemsMaster[idx];
       if(!oldItem) return;
@@ -774,15 +854,18 @@ function renderManageModal(){
         return;
       }
       const oldName = oldItem.name;
-      if(newName!==oldName){
-        transactions.forEach(t=>{ if(t.item===oldName) t.item = newName; });
-        await saveData();
+      try{
+        const res = await apiPost('updateItem', {oldName, item:{name:newName, category:newCat, unit:newUnit}});
+        if(res && res.success===false){
+          showToast('更新失敗：'+(res.error||''));
+          return;
+        }
         if(selectedItem===oldName) selectedItem = newName;
+        showToast('已更新品項');
+        await loadData();
+      }catch(e){
+        showToast('更新失敗，請確認網路連線後再試一次');
       }
-      itemsMaster[idx] = {name:newName, category:newCat};
-      await saveItems();
-      showToast('已更新品項');
-      render();
     });
   });
 
@@ -796,12 +879,159 @@ function renderManageModal(){
         ? `「${it.name}」目前有 ${txCount} 筆異動紀錄，刪除品項後這些紀錄仍會保留在異動紀錄裡，但清單中不會再顯示這個品項。確定要刪除嗎？`
         : `確定要刪除「${it.name}」嗎？`;
       if(!confirm(msg)) return;
-      itemsMaster.splice(idx,1);
-      await saveItems();
-      if(selectedItem===it.name) selectedItem = null;
-      showToast('已刪除品項');
-      render();
+      try{
+        await apiPost('deleteItem', {name: it.name});
+        if(selectedItem===it.name) selectedItem = null;
+        showToast('已刪除品項');
+        await loadData();
+      }catch(e){
+        showToast('刪除失敗，請確認網路連線後再試一次');
+      }
     });
+  });
+}
+
+/* ================= EDIT TRANSACTION MODAL ================= */
+function captureEditTxForm(){
+  if(!editingTx) return;
+  const get = id => document.getElementById(id);
+  if(get('et_item')) editingTx.item = get('et_item').value;
+  if(get('et_batch')) editingTx.batch = get('et_batch').value;
+  if(get('et_date')) editingTx.date = get('et_date').value;
+  if(get('et_qty')) editingTx.qty = get('et_qty').value;
+  if(get('et_unit')) editingTx.unit = get('et_unit').value;
+  if(get('et_partial')) editingTx.partialQty = get('et_partial').value;
+  if(get('et_handler_select')){
+    const v = get('et_handler_select').value;
+    editingTx._handlerChoice = v;
+    editingTx.handler = v==='其他' ? (get('et_handler_other')?.value || '') : v;
+  }
+  if(get('et_outcat')) editingTx.outCategory = get('et_outcat').value;
+  if(get('et_note')) editingTx.note = get('et_note').value;
+}
+
+function renderEditTxModal(){
+  let existing = document.getElementById('editTxModalRoot');
+  if(existing) existing.remove();
+  if(!editingTx) return;
+
+  const tx = editingTx;
+  const cats = categoryOrder();
+  const isHandlerKnown = HANDLERS.includes(tx.handler);
+  const handlerChoiceVal = tx._handlerChoice!==undefined ? tx._handlerChoice : (tx.handler ? (isHandlerKnown ? tx.handler : '其他') : '');
+
+  const root = document.createElement('div');
+  root.id = 'editTxModalRoot';
+  root.innerHTML = `
+    <div class="modal-backdrop" id="editTxBackdrop">
+      <div class="modal" style="width:480px;max-width:92vw;max-height:85vh;overflow-y:auto;">
+        <h3>編輯異動紀錄</h3>
+        <div class="type-toggle" style="margin-bottom:14px;">
+          <div class="type-btn in ${tx.type==='in'?'sel':''}" id="et_type_in">＋ 入庫</div>
+          <div class="type-btn out ${tx.type==='out'?'sel':''}" id="et_type_out">－ 出庫</div>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>品項名稱</label>
+          <select id="et_item">
+            ${cats.map(cat=>`
+              <optgroup label="${escapeAttr(cat)}">
+                ${itemsMaster.filter(i=>i.category===cat).map(i=>`<option value="${escapeAttr(i.name)}" ${tx.item===i.name?'selected':''}>${escapeHtml(i.name)}</option>`).join('')}
+              </optgroup>
+            `).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>有效日期</label>
+          <input type="date" id="et_batch" value="${escapeAttr(tx.batch||'')}">
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>${tx.type==='out'?'出庫日期':'入庫日期'}</label>
+          <input type="date" id="et_date" value="${escapeAttr(tx.date||'')}">
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>數量</label>
+          <div style="display:flex;gap:6px;">
+            <input type="number" id="et_qty" min="0" step="1" value="${escapeAttr(tx.qty!=null?tx.qty:'')}" style="flex:1;">
+            <select id="et_unit" style="width:82px;flex-shrink:0;">
+              ${UNITS.map(u=>`<option value="${u}" ${tx.unit===u?'selected':''}>${u}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>不足籃數量（單位：包）</label>
+          <input type="number" id="et_partial" min="0" step="1" value="${(tx.partialQty!==null && tx.partialQty!==undefined && tx.partialQty!=='')?escapeAttr(tx.partialQty):''}" placeholder="選填">
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>經手人</label>
+          <select id="et_handler_select">
+            <option value="">請選擇…</option>
+            ${HANDLERS.map(h=>`<option value="${escapeAttr(h)}" ${handlerChoiceVal===h?'selected':''}>${escapeHtml(handlerLabel(h))}</option>`).join('')}
+            <option value="其他" ${handlerChoiceVal==='其他'?'selected':''}>其他</option>
+          </select>
+          ${handlerChoiceVal==='其他' ? `<input id="et_handler_other" placeholder="請輸入姓名" value="${escapeAttr(tx.handler||'')}" style="margin-top:6px;">` : ''}
+        </div>
+        ${tx.type==='out' ? `
+        <div class="field" style="margin-bottom:12px;">
+          <label>出庫類別</label>
+          <input id="et_outcat" list="etOutCatList" value="${escapeAttr(tx.outCategory||'')}">
+          <datalist id="etOutCatList">${OUT_CATEGORIES.map(c=>`<option value="${escapeAttr(c)}">`).join('')}</datalist>
+        </div>` : ''}
+        <div class="field" style="margin-bottom:14px;">
+          <label>備註</label>
+          <input id="et_note" value="${escapeAttr(tx.note||'')}">
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost sm" id="et_cancel">取消</button>
+          <button class="btn sm" id="et_save">儲存修改</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  document.getElementById('editTxBackdrop').addEventListener('click', e=>{
+    if(e.target.id==='editTxBackdrop'){ editingTx=null; renderEditTxModal(); }
+  });
+  document.getElementById('et_cancel').addEventListener('click', ()=>{ editingTx=null; renderEditTxModal(); });
+  document.getElementById('et_type_in').addEventListener('click', ()=>{
+    captureEditTxForm(); editingTx.type='in'; renderEditTxModal();
+  });
+  document.getElementById('et_type_out').addEventListener('click', ()=>{
+    captureEditTxForm(); editingTx.type='out'; renderEditTxModal();
+  });
+  document.getElementById('et_handler_select').addEventListener('change', ()=>{
+    captureEditTxForm(); renderEditTxModal();
+  });
+
+  document.getElementById('et_save').addEventListener('click', async ()=>{
+    captureEditTxForm();
+    const item = editingTx.item;
+    const date = editingTx.date;
+    const qty = parseInt(editingTx.qty, 10);
+    if(!item || !date || !qty || qty<=0){
+      showToast('請確認品項、日期與數量（需大於 0）都已填寫');
+      return;
+    }
+    const original = transactions.find(t=>t.id===editingTx.id);
+    if(!original){ editingTx=null; renderEditTxModal(); return; }
+    const partialRaw = editingTx.partialQty;
+    const partialQty = (partialRaw===null || partialRaw===undefined || partialRaw==='') ? null : parseInt(partialRaw, 10);
+    const updatedTx = {
+      ...original,
+      item, batch: editingTx.batch||'', date, type: editingTx.type,
+      qty, unit: editingTx.unit, partialQty,
+      handler: editingTx.handler||'',
+      outCategory: editingTx.type==='out' ? (editingTx.outCategory||'') : '',
+      note: editingTx.note||''
+    };
+    try{
+      await apiPost('updateTx', {tx: updatedTx});
+      editingTx = null;
+      showToast('已更新這筆異動紀錄');
+      await loadData();
+    }catch(e){
+      showToast('更新失敗，請確認網路連線後再試一次');
+    }
   });
 }
 

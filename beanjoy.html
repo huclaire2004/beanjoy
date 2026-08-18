@@ -228,7 +228,7 @@ async function apiPost(action, payload){
 const DEFAULT_CATEGORY_ORDER = ['冷凍庫存','禾豐冷凍存','冷藏庫存'];
 const OUT_CATEGORIES = ['新廠出貨','回本廠','其他'];
 const HANDLERS = ['阿江','佳萱','小芳','宸瑋'];
-const HANDLER_ROLES = {'小芳':'庫存追蹤人員','宸瑋':'庫存追蹤人員'};
+const HANDLER_ROLES = {'佳萱':'庫存追蹤人員','小芳':'庫存追蹤人員','宸瑋':'庫存追蹤人員'};
 function handlerLabel(h){ return HANDLER_ROLES[h] ? `${h}（${HANDLER_ROLES[h]}）` : h; }
 const UNITS = ['籃','箱','包'];
 

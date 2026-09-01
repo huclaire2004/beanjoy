@@ -435,9 +435,9 @@ function setLang(l){
 
 const DEFAULT_CATEGORY_ORDER = ['冷凍庫存','禾豐冷凍存','冷藏庫存'];
 const DEFAULT_CATEGORY_ORDER_LABELS = {
-  '冷凍庫存': {zh:'冷凍庫存', vi:'Tồn kho kho đông tầng 2', th:'สต๊อกห้องเย็น (แช่แข็ง) ชั้น 2'},
-  '禾豐冷凍存': {zh:'禾豐冷凍存', vi:'Tồn kho kho đông tầng 2 - Hòa Phong', th:'สต๊อกห้องเย็น (แช่แข็ง) ชั้น 2 - เหอเฟิง'},
-  '冷藏庫存': {zh:'冷藏庫存', vi:'Tồn kho kho lạnh tầng 1', th:'สต๊อกห้องเย็น (แช่เย็น) ชั้น 1'}
+'冷凍庫存': {zh:'冷凍庫存', vi:'Tồn kho kho đông tầng 2', th:'สต๊อกห้องเย็น (แช่แข็ง) ชั้น 2'},
+'禾豐冷凍存': {zh:'禾豐冷凍存', vi:'Tồn kho kho đông tầng 2 - Hòa Phong', th:'สต๊อกห้องเย็น (แช่แข็ง) ชั้น 2 - เหอเฟิง'},
+'冷藏庫存': {zh:'冷藏庫存', vi:'Tồn kho kho lạnh tầng 1', th:'สต๊อกห้องเย็น (แช่เย็น) ชั้น 1'}
 const HANDLERS = ['阿江','佳萱','小芳','宸瑋'];
 const HANDLER_ROLES = {'小芳':'handlerRole','宸瑋':'handlerRole'};
 function handlerLabel(h){ return HANDLER_ROLES[h] ? `${h}（${t(HANDLER_ROLES[h])}）` : h; }

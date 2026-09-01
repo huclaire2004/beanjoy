@@ -438,6 +438,10 @@ const HANDLERS = ['阿江','佳萱','小芳','宸瑋'];
 const HANDLER_ROLES = {'小芳':'handlerRole','宸瑋':'handlerRole'};
 function handlerLabel(h){ return HANDLER_ROLES[h] ? `${h}（${t(HANDLER_ROLES[h])}）` : h; }
 const UNITS = ['籃','箱','包'];
+const UNIT_LABELS = {
+  '籃': {zh:'籃', vi:'Giỏ', th:'ตะกร้า'},
+  '箱': {zh:'箱', vi:'Thùng', th:'ลัง'},
+  '包': {zh:'包', vi:'Gói', th:'ห่อ'}
 
 /* 出庫類別：canonical 中文值固定不變（確保三語資料同步在同一筆紀錄），
    顯示文字依語言翻譯 */
